@@ -10,7 +10,7 @@ def done(Location, secureDistance):
     judge =False
     for i in range(0, np.size(Location, 0)):
         for j in range(i + 1, np.size(Location, 0)):
-            if np.linalg.norm([Location[i]-Location[j]]) <= 10:
+            if np.linalg.norm([Location[i]-Location[j]]) <= 10 and Location[i, 1]==Location[j, 1]:
                 judge = True
     return judge
 
@@ -19,7 +19,7 @@ def initialize(laneInformation):
     # initialize lane data
     surroundingCarsNumber = 6 # number of surrounding Cars
     secureDistance = 10.         # collision distance centric Car
-    vCar = 70 / 3.6           # initialize Car's velocity
+    vCar = 80 / 3.6           # initialize Car's velocity
     vExpCar = 80 / 3.6        # initialize Car's expected velocity
     judge = True     # a viriation to judge collision
     # initialize car's data
@@ -49,17 +49,18 @@ def plotInit(CarLocation, surroundingCarsNumber, surroundingCarsLocation, laneIn
     laneWide = laneInformation[1]
     whichLane = laneInformation[2]
     #ax = fig.add_subplot(111)
-    for i in whichLane:
-        plt.plot(laneRange, np.ones(len(laneRange)) * laneWide * whichLane[i], 'r--')
+    for i in np.hstack([-1, whichLane]):
+        plt.plot(laneRange, np.zeros(len(laneRange)), 'r--')
+        plt.plot(laneRange, np.ones(len(laneRange)) * laneWide * i, 'r--')
     for i in range(0, surroundingCarsNumber):
-        ax.add_patch(patches.Rectangle((surroundingCarsLocation[i] - 1), 20, 2, 0, color="blue"))
-    ax.add_patch(patches.Rectangle((CarLocation - 1),20 ,2,0,color="red"))
+        ax.add_patch(patches.Rectangle((surroundingCarsLocation[i] - 1), 5, 2, 0, color="blue"))
+    ax.add_patch(patches.Rectangle((CarLocation - 1),5 ,2,0,color="red"))
     plt.xlabel("X-AXIS")
     plt.ylabel("Y-AXIS")
     plt.title("PLOT-1")
     plt.xlim([laneRange[0], laneRange[-1]])
     fig.show()
-    plt.pause(1)
+    plt.pause(0.003)
     plt.cla()
     '''
     plt.ion()
@@ -116,13 +117,13 @@ laneRange = np.arange(-200., 200., 0.01)  # range of lane
 laneWide = 3.75  # wide of lane
 whichLane = [0, 1, 2]  # number the lane
 laneInformation = [laneRange, laneWide, whichLane]
-secureDistance = 10;
+secureDistance = 10
 
 fig= plt.figure()
 ax = fig.add_subplot(111)
 carsInformation = initialize(laneInformation)
 
-for dt in np.linspace(0., 10., 10):
+for dt in np.linspace(0., 10000., 1000000):
     [judge, carsInformation] = run(carsInformation, dt, laneInformation, secureDistance, fig)
     if(judge==True):
         # initialize(laneInformation)
