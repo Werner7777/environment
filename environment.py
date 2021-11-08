@@ -3,7 +3,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-##lane information   自车期望车速？？？？？
+## lane information
 class Highway:
 
     def __init__(self, figure1=0, figure2=0):  # 初始化
@@ -25,6 +25,7 @@ class Highway:
         self.ax = self.fig.add_subplot(111)
 
     secureDistance = 10.
+
     def plot1(self):
         if (self.f1 == 1):
             for i in np.hstack([-1, self.WhichLane]):
@@ -39,17 +40,6 @@ class Highway:
             self.fig.show()
             plt.pause(0.0001)
             plt.cla()
-            '''
-            plt.ion()
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            line1, = ax.plot(x, y, 'b-')
-
-            for phase in np.linspace(0, 10*np.pi, 100):
-                line1.set_ydata(np.sin(0.5 * x + phase))
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-            '''
 
     def reset(self):
         # initialize lane data
@@ -74,28 +64,48 @@ class Highway:
                     self.Vel[i] = random.uniform(50, 90) / 3.6  # initialize surrounding Car's velocity
                     self.TarVel[i] = random.uniform(50, 90) / 3.6  # initialize surrounding Car's expected velocity
             Location = np.hstack([self.PosX, self.PosY])
-            judge = self.done(Location)
+            judge = self.done(Location, self.secureDistance)
         self.plot1()
 
-    def run(self, dt):
-        ## extract the information of lane and cars
-        ##laneRange =laneInformation[0]
-        ##laneWide = laneInformation[1]
-        ##whichLane = laneInformation[2]
+    def run(self, step):
+        a = 0
+        dt = 100/step
         # longitudinal control
         aSurroundingCars = np.zeros([self.carsnumber - 1, 1])
+
         for i in range(0, self.carsnumber):
             if (i == 0):
-                #if(np.linalg.norm(self.PosX[])) < self.secureDistance * 3:
-                if(self.Vel[0] < self.TarVel[0]):
-                    aCar = 7
+                if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
+                    aCar = -30
                 else:
-                    aCar = 0
-            else:
-                if (self.Vel[i] < self.TarVel[i]):
-                    aSurroundingCars[i-1] = 7
+                    if(self.Vel[0] < self.TarVel[0]):
+                        aCar = 20
+                    else:
+                        aCar = 0
+            elif (i == 4):
+                if (self.done(np.hstack([self.PosX[1:5:3], self.PosY[1:5:3]]), self.secureDistance * 1.5)):
+                    aSurroundingCars[i-1] = -30
                 else:
-                    aSurroundingCars[i-1] = 0
+                    if (self.Vel[i] < self.TarVel[i]):
+                        aSurroundingCars[i-1] = 20
+                    else:
+                        aSurroundingCars[i-1] = 0
+            elif (i == 5):
+                if (self.done(np.hstack([self.PosX[:6:5], self.PosY[:6:5]]), self.secureDistance * 1.5)):
+                    aSurroundingCars[i-1] = -30
+                else:
+                    if (self.Vel[i] < self.TarVel[i]):
+                        aSurroundingCars[i-1] = 20
+                    else:
+                        aSurroundingCars[i-1] = 0
+            elif (i == 6):
+                if (self.done(np.hstack([self.PosX[3:7:3], self.PosY[3:7:3]]), self.secureDistance * 1.5)):
+                    aSurroundingCars[i-1] = -30
+                else:
+                    if (self.Vel[i] < self.TarVel[i]):
+                        aSurroundingCars[i-1] = 20
+                    else:
+                        aSurroundingCars[i-1] = 0
         self.PosX[0] = self.Vel[0] * dt + aCar * 0.5 * np.power(dt, 2) + self.PosX[0]
         self.Vel[0] = self.Vel[0] + aCar * dt
         self.Vel[1:] = self.Vel[1:] + aSurroundingCars * dt
@@ -103,19 +113,21 @@ class Highway:
         # judge collision and plot
         self.plot1()
         Location = np.hstack([self.PosX, self.PosY])
-        judge = self.done(Location)
+        judge = self.done(Location, self.secureDistance)
         reward = 0
         next_s = [self.PosX, self.PosY]
         return next_s, reward, judge
 
     # judge collision
-    def done(self, Location):
+    def done(self, Location, secureDistance):
         judge = False
         for i in range(0 , np.size(Location, 0)):
             for j in range(i + 1, np.size(Location, 0)):
-                if np.linalg.norm([Location[i] - Location[j]]) <= self.secureDistance and Location[i, 1] == Location[j, 1]:
+                if np.linalg.norm([Location[i] - Location[j]]) <= secureDistance and Location[i, 1] == Location[j, 1]:
                     judge = True
         return judge
+
+
 
 # 初始化
 ev = Highway(figure1=1,figure2=1)
@@ -130,7 +142,7 @@ for i in range(episodes):
 
     # 每步运行
     for j in range(step):
-        next_s, reward, done = ev.run(10/step)
+        next_s, reward, done = ev.run(step)
         if done:
             score_list.append(score)
             break
