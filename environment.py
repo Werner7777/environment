@@ -67,45 +67,79 @@ class Highway:
             judge = self.done(Location, self.secureDistance)
         self.plot1()
 
-    def run(self, step):
-        a = 0
-        dt = 100/step
+    def run(self, turn):  # 0 is keep lane, 1 is turn left , 2 is turn right
+        dt = 0.1
         # longitudinal control
         aSurroundingCars = np.zeros([self.carsnumber - 1, 1])
-
-        for i in range(0, self.carsnumber):
-            if (i == 0):
-                if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
-                    aCar = -30
-                else:
-                    if(self.Vel[0] < self.TarVel[0]):
-                        aCar = 20
+        place = self.sort(turn)
+        if(turn == 0):
+            for i in range(0, self.carsnumber):
+                if (i == 0):
+                    if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
+                        aCar = -30
                     else:
-                        aCar = 0
-            elif (i == 4):
-                if (self.done(np.hstack([self.PosX[1:5:3], self.PosY[1:5:3]]), self.secureDistance * 1.5)):
-                    aSurroundingCars[i-1] = -30
-                else:
-                    if (self.Vel[i] < self.TarVel[i]):
-                        aSurroundingCars[i-1] = 20
+                        if(self.Vel[0] < self.TarVel[0]):
+                            aCar = 20
+                        else:
+                            aCar = 0
+                elif (i == 4):
+                    if (self.done(np.hstack([self.PosX[1:5:3], self.PosY[1:5:3]]), self.secureDistance * 1.5)):
+                        aSurroundingCars[i-1] = -30
                     else:
-                        aSurroundingCars[i-1] = 0
-            elif (i == 5):
-                if (self.done(np.hstack([self.PosX[:6:5], self.PosY[:6:5]]), self.secureDistance * 1.5)):
-                    aSurroundingCars[i-1] = -30
-                else:
-                    if (self.Vel[i] < self.TarVel[i]):
-                        aSurroundingCars[i-1] = 20
+                        if (self.Vel[i] < self.TarVel[i]):
+                            aSurroundingCars[i-1] = 20
+                        else:
+                            aSurroundingCars[i-1] = 0
+                elif (i == 5):
+                    if (self.done(np.hstack([self.PosX[:6:5], self.PosY[:6:5]]), self.secureDistance * 1.5)):
+                        aSurroundingCars[i-1] = -30
                     else:
-                        aSurroundingCars[i-1] = 0
-            elif (i == 6):
-                if (self.done(np.hstack([self.PosX[3:7:3], self.PosY[3:7:3]]), self.secureDistance * 1.5)):
-                    aSurroundingCars[i-1] = -30
-                else:
-                    if (self.Vel[i] < self.TarVel[i]):
-                        aSurroundingCars[i-1] = 20
+                        if (self.Vel[i] < self.TarVel[i]):
+                            aSurroundingCars[i-1] = 20
+                        else:
+                            aSurroundingCars[i-1] = 0
+                elif (i == 6):
+                    if (self.done(np.hstack([self.PosX[3:7:3], self.PosY[3:7:3]]), self.secureDistance * 1.5)):
+                        aSurroundingCars[i-1] = -30
                     else:
-                        aSurroundingCars[i-1] = 0
+                        if (self.Vel[i] < self.TarVel[i]):
+                            aSurroundingCars[i-1] = 20
+                        else:
+                            aSurroundingCars[i-1] = 0
+        else:
+            for i in range(0, self.carsnumber):
+                if (i == 0):
+                    if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
+                        aCar = -30
+                    else:
+                        if(self.Vel[0] < self.TarVel[0]):
+                            aCar = 20
+                        else:
+                            aCar = 0
+                elif (i == 4):
+                    if (self.done(np.hstack([self.PosX[1:5:3], self.PosY[1:5:3]]), self.secureDistance * 1.5)):
+                        aSurroundingCars[i-1] = -30
+                    else:
+                        if (self.Vel[i] < self.TarVel[i]):
+                            aSurroundingCars[i-1] = 20
+                        else:
+                            aSurroundingCars[i-1] = 0
+                elif (i == 5):
+                    if (self.done(np.hstack([self.PosX[:6:5], self.PosY[:6:5]]), self.secureDistance * 1.5)):
+                        aSurroundingCars[i-1] = -30
+                    else:
+                        if (self.Vel[i] < self.TarVel[i]):
+                            aSurroundingCars[i-1] = 20
+                        else:
+                            aSurroundingCars[i-1] = 0
+                elif (i == 6):
+                    if (self.done(np.hstack([self.PosX[3:7:3], self.PosY[3:7:3]]), self.secureDistance * 1.5)):
+                        aSurroundingCars[i-1] = -30
+                    else:
+                        if (self.Vel[i] < self.TarVel[i]):
+                            aSurroundingCars[i-1] = 20
+                        else:
+                            aSurroundingCars[i-1] = 0
         self.PosX[0] = self.Vel[0] * dt + aCar * 0.5 * np.power(dt, 2) + self.PosX[0]
         self.Vel[0] = self.Vel[0] + aCar * dt
         self.Vel[1:] = self.Vel[1:] + aSurroundingCars * dt
@@ -127,6 +161,13 @@ class Highway:
                     judge = True
         return judge
 
+    def sort(self, lane):
+        flag = 1
+        for i in range(1, self.carsnumber - 1):
+            if ((lane * self.LaneWidth/2 == self.PosY[i]) & (self.PosX[0] < self.PosX[i])):
+                flag += 1
+        return flag
+
 
 
 # 初始化
@@ -142,7 +183,7 @@ for i in range(episodes):
 
     # 每步运行
     for j in range(step):
-        next_s, reward, done = ev.run(step)
+        next_s, reward, done = ev.run(0)
         if done:
             score_list.append(score)
             break
