@@ -70,80 +70,45 @@ class Highway:
     def run(self, turn):  # 0 is keep lane, 1 is turn left , 2 is turn right
         dt = 0.1
         # longitudinal control
-        aSurroundingCars = np.zeros([self.carsnumber - 1, 1])
+        a = np.zeros([self.carsnumber, 1])
         place = self.sort(turn)
-        if(turn == 0):
-            for i in range(0, self.carsnumber):
-                if (i == 0):
-                    if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
-                        aCar = -30
-                    else:
-                        if(self.Vel[0] < self.TarVel[0]):
-                            aCar = 20
-                        else:
-                            aCar = 0
-                elif (i == 4):
-                    if (self.done(np.hstack([self.PosX[1:5:3], self.PosY[1:5:3]]), self.secureDistance * 1.5)):
-                        aSurroundingCars[i-1] = -30
-                    else:
-                        if (self.Vel[i] < self.TarVel[i]):
-                            aSurroundingCars[i-1] = 20
-                        else:
-                            aSurroundingCars[i-1] = 0
-                elif (i == 5):
-                    if (self.done(np.hstack([self.PosX[:6:5], self.PosY[:6:5]]), self.secureDistance * 1.5)):
-                        aSurroundingCars[i-1] = -30
-                    else:
-                        if (self.Vel[i] < self.TarVel[i]):
-                            aSurroundingCars[i-1] = 20
-                        else:
-                            aSurroundingCars[i-1] = 0
-                elif (i == 6):
-                    if (self.done(np.hstack([self.PosX[3:7:3], self.PosY[3:7:3]]), self.secureDistance * 1.5)):
-                        aSurroundingCars[i-1] = -30
-                    else:
-                        if (self.Vel[i] < self.TarVel[i]):
-                            aSurroundingCars[i-1] = 20
-                        else:
-                            aSurroundingCars[i-1] = 0
+        if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
+            a[0] = -30
         else:
-            for i in range(0, self.carsnumber):
-                if (i == 0):
-                    if (self.done(np.hstack([self.PosX[:3:2], self.PosY[:3:2]]), self.secureDistance * 1.5)):
-                        aCar = -30
-                    else:
-                        if(self.Vel[0] < self.TarVel[0]):
-                            aCar = 20
-                        else:
-                            aCar = 0
-                elif (i == 4):
-                    if (self.done(np.hstack([self.PosX[1:5:3], self.PosY[1:5:3]]), self.secureDistance * 1.5)):
-                        aSurroundingCars[i-1] = -30
-                    else:
-                        if (self.Vel[i] < self.TarVel[i]):
-                            aSurroundingCars[i-1] = 20
-                        else:
-                            aSurroundingCars[i-1] = 0
-                elif (i == 5):
-                    if (self.done(np.hstack([self.PosX[:6:5], self.PosY[:6:5]]), self.secureDistance * 1.5)):
-                        aSurroundingCars[i-1] = -30
-                    else:
-                        if (self.Vel[i] < self.TarVel[i]):
-                            aSurroundingCars[i-1] = 20
-                        else:
-                            aSurroundingCars[i-1] = 0
-                elif (i == 6):
-                    if (self.done(np.hstack([self.PosX[3:7:3], self.PosY[3:7:3]]), self.secureDistance * 1.5)):
-                        aSurroundingCars[i-1] = -30
-                    else:
-                        if (self.Vel[i] < self.TarVel[i]):
-                            aSurroundingCars[i-1] = 20
-                        else:
-                            aSurroundingCars[i-1] = 0
-        self.PosX[0] = self.Vel[0] * dt + aCar * 0.5 * np.power(dt, 2) + self.PosX[0]
-        self.Vel[0] = self.Vel[0] + aCar * dt
-        self.Vel[1:] = self.Vel[1:] + aSurroundingCars * dt
-        self.PosX[1:] = self.Vel[1:] * dt + aSurroundingCars * 0.5 * np.power(dt, 2) + self.PosX[1:]
+            if(self.Vel[0] < self.TarVel[0]):
+                a[0] = 20
+            else:
+                a[0] = 0
+        # target velocity
+        for i in range(0, self.carsnumber):
+            if (self.Vel[i] < self.TarVel[i]):
+                a[i] = 20
+            else:
+                a[i] = 0
+        # longitudinal control
+        for i in self.WhichLane:
+            if(self.EgoLaneID == i):
+                place = self.sort(i)
+                if(place == 1):
+                    if (self.done(np.hstack([self.PosX[:2+i:1+i], self.PosY[:2+i:1+i]]), self.secureDistance * 1.5)):
+                        a[1+i] = -30
+                elif(place == 2):
+                    if (self.done(np.hstack([self.PosX[:2+i:1+i], self.PosY[:2+i:1+i]]), self.secureDistance * 1.5)):
+                        a[0] = -30
+                    if (self.done(np.hstack([self.PosX[:2+i+3:1+i+3], self.PosY[:2+i+3:1+i+3]]), self.secureDistance * 1.5)):
+                        a[i+4] = -30
+                elif(place == 3):
+                    if (self.done(np.hstack([self.PosX[:2+i+3:1+i+3], self.PosY[:2+i+3:1+i+3]]), self.secureDistance * 1.5)):
+                        a[0] = -30
+            else:
+                if (self.done(np.hstack([self.PosX[i+1:i+5:3], self.PosY[i+1:i+5:3]]), self.secureDistance * 1.5)):
+                    a[i+4] = -30
+
+        self.PosX[0] = self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2) + self.PosX[0]
+        self.Vel[0] = self.Vel[0] + a[0] * dt
+        self.Vel[1:] = self.Vel[1:] + a[1:] * dt
+        self.PosX[1:] = self.Vel[1:] * dt + a[1:] * 0.5 * np.power(dt, 2) + self.PosX[1:]
+
         # judge collision and plot
         self.plot1()
         Location = np.hstack([self.PosX, self.PosY])
@@ -162,11 +127,18 @@ class Highway:
         return judge
 
     def sort(self, lane):
-        flag = 1
+        place = 1
         for i in range(1, self.carsnumber - 1):
             if ((lane * self.LaneWidth/2 == self.PosY[i]) & (self.PosX[0] < self.PosX[i])):
-                flag += 1
-        return flag
+                place += 1
+        return place
+    '''
+    def longitudinalControl (self, place,turn):
+        laneId1=[1, 4]
+        laneId2=[2, 5]
+        laneId3=[3, 6]
+        if(self.EgoLaneID == 1):
+    '''
 
 
 
