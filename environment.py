@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import math
-# lane information
+import sys
 
 np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 class Highway:
@@ -43,6 +43,11 @@ class Highway:
             plt.pause(0.0001)
             plt.cla()
 
+    def plot2(self, next_s):
+        for i in range(10):
+            sys.stdout.write(str(next_s))
+            sys.stdout.flush()
+
     def reset(self):
         # initialize lane data
         # collision distance centric Car
@@ -70,63 +75,16 @@ class Highway:
             judge = self.done2(Location, self.secureDistance)
         self.plot1()
 
-    def run(self, turn):  # 0 is keep lane, 1 is turn left , 2 is turn right
-        dt = 0.1
-        # longitudinal control
-        a = np.zeros([self.carsnumber, 1])
-        place = self.sort(turn)
-        # target velocity
-        for i in range(0, self.carsnumber):
-            if (self.Vel[i] < self.TarVel[i]):
-                a[i] = 20
-            else:
-                a[i] = 0
-        # longitudinal control
-        for i in self.WhichLane:
-            if(self.EgoLaneID == i):
-                place = self.sort(i)
-                if(place == 1):
-                    if (self.done(np.hstack([self.PosX[:2+i:1+i], self.PosY[:2+i:1+i]]), self.secureDistance * 1.5)):
-                        a[1+i] = -30
-                elif(place == 2):
-                    if (self.done(np.hstack([self.PosX[:2+i:1+i], self.PosY[:2+i:1+i]]), self.secureDistance * 1.5)):
-                        a[0] = -30
-                    if (self.done(np.hstack([self.PosX[:2+i+3:1+i+3], self.PosY[:2+i+3:1+i+3]]), self.secureDistance * 1.5)):
-                        a[i+4] = -30
-                elif(place == 3):
-                    if (self.done(np.hstack([self.PosX[:2+i+3:1+i+3], self.PosY[:2+i+3:1+i+3]]), self.secureDistance * 1.5)):
-                        a[0] = -30
-            else:
-                if (self.done(np.hstack([self.PosX[i+1:i+5:3], self.PosY[i+1:i+5:3]]), self.secureDistance * 1.5)):
-                    a[i+4] = -30
-
-        self.PosX[0] = self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2) + self.PosX[0]
-        self.Vel[0] = self.Vel[0] + a[0] * dt
-        self.Vel[1:] = self.Vel[1:] + a[1:] * dt
-        self.PosX[1:] = self.Vel[1:] * dt + a[1:] * 0.5 * np.power(dt, 2) + self.PosX[1:]
-        dx=self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2)
-        self.lateral(turn, dx, dt)
-
+    def run(self, action):  # 0 is keep lane, 1 is turn left , 2 is turn right
+        accel = self.acc(action)
         # judge collision and plot
         self.plot1()
         Location = np.hstack([self.PosX, self.PosY])
-        judge = self.done2(Location, self.secureDistance)
-        reward = 0
-        next_s = [self.PosX, self.PosY]
-        return next_s, reward, judge
-
-    def lateral(self, turn, xc, Ts):
-        yc=self.PosY[0]
-        L=50
-        pi=3.141592653589793
-        #turn=1 is turn left turn=2 is turn right
-        if(turn ==1 | turn ==2):
-            yc = yc + np.sign(-(turn - 1.5))*(self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
-                 2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
-        self.PosY[0] = yc
-        self.EgoLaneID = int(1.001 + self.PosY[0]//self.LaneWidth)
-        if np.linalg.norm([(self.EgoLaneID-1)*0.5*self.LaneWidth,self.PosY[0]]) < 0.05:
-            self.PosY[0] = (self.EgoLaneID-1)*0.5*self.LaneWidth
+        d = self.done2(Location, self.secureDistance)
+        r = self.reward(d, action, accel)
+        next_s = self.observer()
+        # self.plot2(next_s)
+        return next_s, r, d
 
     # judge collision
     def done(self, Location, secureDistance):
@@ -151,6 +109,136 @@ class Highway:
             if (((lane - 0.5) * self.LaneWidth == self.PosY[i]) & (self.PosX[0] < self.PosX[i])):
                 place += 1
         return place
+
+    def acc(self, action):
+        # longitudinal control
+        a = np.zeros([self.carsnumber, 1])
+        place = self.sort(action)
+        # target velocity
+        for i in range(0, self.carsnumber):
+            if (self.Vel[i] < self.TarVel[i]):
+                a[i] = 20
+            else:
+                a[i] = 0
+        # longitudinal control
+        for i in self.WhichLane:
+            dt=0.1
+            if (self.EgoLaneID == i):
+                place = self.sort(i)
+                if (place == 1):
+                    if (self.done(np.hstack([self.PosX[:2 + i:1 + i], self.PosY[:2 + i:1 + i]]),
+                                  self.secureDistance * 1.5)):
+                        a[1 + i] = -30
+                elif (place == 2):
+                    if (self.done(np.hstack([self.PosX[:2 + i:1 + i], self.PosY[:2 + i:1 + i]]),
+                                  self.secureDistance * 1.5)):
+                        a[0] = -30
+                    if (self.done(np.hstack([self.PosX[:2 + i + 3:1 + i + 3], self.PosY[:2 + i + 3:1 + i + 3]]),
+                                  self.secureDistance * 1.5)):
+                        a[i + 4] = -30
+                elif (place == 3):
+                    if (self.done(np.hstack([self.PosX[:2 + i + 3:1 + i + 3], self.PosY[:2 + i + 3:1 + i + 3]]),
+                                  self.secureDistance * 1.5)):
+                        a[0] = -30
+            else:
+                if (
+                self.done(np.hstack([self.PosX[i + 1:i + 5:3], self.PosY[i + 1:i + 5:3]]), self.secureDistance * 1.5)):
+                    a[i + 4] = -30
+        self.PosX[0] = self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2) + self.PosX[0]
+        self.Vel[0] = self.Vel[0] + a[0] * dt
+        self.Vel[1:] = self.Vel[1:] + a[1:] * dt
+        self.PosX[1:] = self.Vel[1:] * dt + a[1:] * 0.5 * np.power(dt, 2) + self.PosX[1:]
+        dx = self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2)
+        self.lateral(action, dx, dt)
+        return a[0]
+
+    def lateral(self, turn, xc, Ts):
+        yc=self.PosY[0]
+        L=50
+        pi=3.141592653589793
+        #turn=1 is turn left turn=2 is turn right
+        if(turn ==1 | turn ==2):
+            yc = yc + np.sign(-(turn - 1.5))*(self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
+                 2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
+        self.PosY[0] = yc
+        self.EgoLaneID = int(1.001 + self.PosY[0]//self.LaneWidth)
+        if np.linalg.norm([(self.EgoLaneID-1)*0.5*self.LaneWidth,self.PosY[0]]) < 0.05:
+            self.PosY[0] = (self.EgoLaneID-1)*0.5*self.LaneWidth
+
+    def observer(self):  # 观测量
+        ob = np.empty([13,1]) # 自车视角右前、正前、左前、右后、正后、左后车相对位置，上同顺序车相对速度，自车车速
+        ob[12] = self.Vel[0]
+        orm = self.sort(self.EgoLaneID)
+        if orm==1:
+            ob[1] = 200
+            ob[4] = self.PosX[self.EgoLaneID+1]-self.PosX[0]
+            ob[7] = 10
+            ob[10] = self.Vel[self.EgoLaneID+1]-self.Vel[0]
+        elif orm==2:
+            ob[1] = self.PosX[self.EgoLaneID+1]-self.PosX[0]
+            ob[4] = self.PosX[self.EgoLaneID+4]-self.PosX[0]
+            ob[7] = self.Vel[self.EgoLaneID+1]-self.Vel[0]
+            ob[10] = self.Vel[self.EgoLaneID+4]-self.Vel[0]
+        else:
+            ob[1] = self.PosX[self.EgoLaneID+4]-self.PosX[0]
+            ob[4] = -200
+            ob[7] = self.Vel[self.EgoLaneID+4]-self.Vel[0]
+            ob[10] = -10
+        if self.EgoLaneID == 0:
+            ob[0] = 0
+            ob[3] = 0
+            ob[6] = 0
+            ob[9] = 0
+        else:
+            orr = self.sort(self.EgoLaneID-1)
+            if orr == 1:
+                ob[0] = 200
+                ob[3] = self.PosX[self.EgoLaneID] - self.PosX[0]
+                ob[6] = 10
+                ob[9] = self.Vel[self.EgoLaneID] - self.Vel[0]
+            elif orr == 2:
+                ob[0] = self.PosX[self.EgoLaneID] - self.PosX[0]
+                ob[3] = self.PosX[self.EgoLaneID + 3] - self.PosX[0]
+                ob[6] = self.Vel[self.EgoLaneID] - self.Vel[0]
+                ob[9] = self.Vel[self.EgoLaneID + 3] - self.Vel[0]
+            else:
+                ob[0] = self.PosX[self.EgoLaneID + 3] - self.PosX[0]
+                ob[3] = -200
+                ob[6] = self.Vel[self.EgoLaneID + 3] - self.Vel[0]
+                ob[9] = -10
+        if self.EgoLaneID == 2:
+            ob[2] = 0
+            ob[5] = 0
+            ob[8] = 0
+            ob[11] = 0
+        else:
+            orl = self.sort(self.EgoLaneID+1)
+            if orl == 1:
+                ob[2] = 200
+                ob[5] = self.PosX[self.EgoLaneID + 2] - self.PosX[0]
+                ob[8] = 10
+                ob[11] = self.Vel[self.EgoLaneID + 2] - self.Vel[0]
+            elif orl == 2:
+                ob[2] = self.PosX[self.EgoLaneID + 2] - self.PosX[0]
+                ob[5] = self.PosX[self.EgoLaneID + 5] - self.PosX[0]
+                ob[8] = self.Vel[self.EgoLaneID + 2] - self.Vel[0]
+                ob[11] = self.Vel[self.EgoLaneID + 5] - self.Vel[0]
+            else:
+                ob[2] = self.PosX[self.EgoLaneID + 5] - self.PosX[0]
+                ob[5] = -200
+                ob[8] = self.Vel[self.EgoLaneID + 5] - self.Vel[0]
+                ob[11] = -10
+        return ob
+
+    def reward(self, done, action, accel):  # 计算奖励函数
+        if done==1:
+            return -20
+        r = accel
+        if action!=0:
+            r=r-1
+        if self.Vel[0]<60:
+            r = r-0.1
+        return r
     '''
     def longitudinalControl (self, place,turn):
         laneId1=[1, 4]
