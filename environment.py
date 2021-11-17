@@ -17,17 +17,16 @@ class Highway:
         self.PosY = np.empty([self.carsnumber, 1])  # 全局横向位置m，顺序上同
         self.TarVel = np.empty([self.carsnumber, 1])
         self.EgoTarVel = np.empty([1, 1])
-        self.EgoLaneID = 1  # 自车所处车道ID
-        self.LaneWidth = 3.5
         self.WhichLane = [0, 1, 2]
+        self.EgoLaneID = random.choice(self.WhichLane)  # 自车所处车道ID
+        self.LaneWidth = 3.75
         self.LaneRange = np.arange(-200., 200., 0.01)
         self.f1 = figure1  # 是否画场景俯视图标志位
         self.f2 = figure2  # 是否画观测数据列表图标志位
+        self.secureDistance = 10.
         # 画换道路线
         self.fig = plt.figure(num=1, figsize=(8, 50 / (self.LaneRange[-1] * 2) * len(self.WhichLane) * self.LaneWidth))
         self.ax = self.fig.add_subplot(111)
-
-    secureDistance = 10.
 
     def plot1(self):
         if self.f1 == 1:
@@ -52,7 +51,8 @@ class Highway:
         judge = True  # a viriation to judge collision
         # initialize car's data
         self.PosX[0] = 0.
-        self.PosY[0] = self.WhichLane[1] * self.LaneWidth - 0.5 * self.LaneWidth  # [lateral location, whichLane]
+        self.PosY[0] = self.EgoLaneID * self.LaneWidth - 0.5 * self.LaneWidth  # [lateral location, whichLane]
+        self.TarVel[0] = self.EgoTarVel
         while judge == True:
             for i in range(1, self.carsnumber):
 
@@ -117,19 +117,16 @@ class Highway:
 
     def lateral(self, turn, xc, Ts):
         yc=self.PosY[0]
-        L=180
+        L=50
         pi=3.141592653589793
-        if(turn==1): #turn left
-            yc = yc + 50*(self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
+        #turn=1 is turn left turn=2 is turn right
+        if(turn ==1 | turn ==2):
+            yc = yc + np.sign(-(turn - 1.5))*(self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
                  2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
-        elif(turn==2): #tuen right
-            yc = yc - (self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
-                    2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
         self.PosY[0] = yc
         self.EgoLaneID = int(1.001 + self.PosY[0]//self.LaneWidth)
-        if self.EgoLaneID != 1:
-            kk=0
-
+        if np.linalg.norm([(self.EgoLaneID-1)*0.5*self.LaneWidth,self.PosY[0]]) < 0.05:
+            self.PosY[0] = (self.EgoLaneID-1)*0.5*self.LaneWidth
 
     # judge collision
     def done(self, Location, secureDistance):
@@ -161,23 +158,3 @@ class Highway:
         laneId3=[3, 6]
         if(self.EgoLaneID == 1):
     '''
-
-
-
-# 初始化
-ev = Highway(figure1=1,figure2=1)
-episodes = 50000
-score_list = []
-
-# 每个回合运行
-for i in range(episodes):
-    step = 1000
-    score = 0
-    s = ev.reset()
-
-    # 每步运行
-    for j in range(step):
-        next_s, reward, done = ev.run(1)
-        if done:
-            score_list.append(score)
-            break

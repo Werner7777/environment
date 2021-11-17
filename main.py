@@ -1,5 +1,3 @@
-import tensorflow as tf
-import pandas as pd
 import matplotlib.pyplot as plt
 import Environment
 import ReinforceLearning
@@ -29,3 +27,8 @@ for i in range(episodes):
             break
 
 # 训练完成 画一个总的走势图
+agent.save_model()
+plt.plot(score_list, color='green')
+plt.show()
+
+# 三条车道从下到上的ID是012，周车0，123右前正前左前，456右后正后左后，行为0保持车道，1右换道2左换道
