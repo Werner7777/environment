@@ -73,7 +73,9 @@ class Highway:
                     self.TarVel[i] = random.uniform(50, 90) / 3.6  # initialize surrounding Car's expected velocity
             Location = np.hstack([self.PosX, self.PosY])
             judge = self.done2(Location, self.secureDistance)
+        s=self.observer()
         self.plot1()
+        return s
 
     def run(self, action):  # 0 is keep lane, 1 is turn left , 2 is turn right
         accel = self.acc(action)
@@ -157,7 +159,7 @@ class Highway:
         L=50
         pi=3.141592653589793
         #turn=1 is turn left turn=2 is turn right
-        if(turn ==1 | turn ==2):
+        if(turn ==1 or turn == 2):
             yc = yc + np.sign(-(turn - 1.5))*(self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
                  2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
         self.PosY[0] = yc

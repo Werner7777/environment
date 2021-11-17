@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
-import Environment
+import environment
 import ReinforceLearning
 
 # 初始化
-ev = Environment.Highway(figure1=1,figure2=1)
+ev = environment.Highway(figure1=1,figure2=1)
 agent = ReinforceLearning.DQN()
 episodes = 50000
 score_list = []

@@ -13,7 +13,7 @@ for i in range(episodes):
 
     # 每步运行
     for j in range(step):
-        next_s, reward, done = ev.run(0)
+        next_s, reward, done = ev.run(2)
         if done:
             score_list.append(score)
             break
