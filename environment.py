@@ -17,8 +17,8 @@ class Highway:
         self.PosY = np.empty([self.carsnumber, 1])  # 全局横向位置m，顺序上同
         self.TarVel = np.empty([self.carsnumber, 1])
         self.EgoTarVel = np.empty([1, 1])
+        self.EgoLaneID = np.empty([1, 1])  # 自车所处车道ID
         self.WhichLane = [0, 1, 2]
-        self.EgoLaneID = random.choice(self.WhichLane)  # 自车所处车道ID
         self.LaneWidth = 3.75
         self.LaneRange = np.arange(-200., 200., 0.01)
         self.f1 = figure1  # 是否画场景俯视图标志位
@@ -27,7 +27,7 @@ class Highway:
         # 画换道路线
         self.fig = plt.figure(num=1, figsize=(8, 50 / (self.LaneRange[-1] * 2) * len(self.WhichLane) * self.LaneWidth))
         self.ax = self.fig.add_subplot(111)
-
+        self.dt = 0.1
     def plot1(self):
         if self.f1 == 1:
             for i in np.hstack([-1, self.WhichLane]):
@@ -51,6 +51,7 @@ class Highway:
     def reset(self):
         # initialize lane data
         # collision distance centric Car
+        self.EgoLaneID = random.choice(self.WhichLane)  # 自车所处车道ID
         self.Vel[0] = 80 / 3.6  # initialize Car's velocity(unit:metre per second)
         self.EgoTarVel = 80 / 3.6  # initialize Car's expected velocity
         judge = True  # a viriation to judge collision
@@ -58,6 +59,22 @@ class Highway:
         self.PosX[0] = 0.
         self.PosY[0] = self.EgoLaneID * self.LaneWidth - 0.5 * self.LaneWidth  # [lateral location, whichLane]
         self.TarVel[0] = self.EgoTarVel
+
+
+        n = 250  # 换道总时间T = dt * n , dt为0.1s
+        T = self.dt * n
+        L = self.EgoTarVel * n *self.dt
+        self.yc=np.empty([n , 1])
+        self.yc[0] = 0
+        pi = 3.141592653589793
+        xc = 0
+        for j in range(1, n):
+            xc = self.EgoTarVel * j *self.dt + xc
+            self.yc[j] =(self.LaneWidth / (2 * pi) * (2 * pi * (xc + self.dt * self.EgoTarVel) / L + math.sin(\
+                2 * pi * (xc + self.dt * self.EgoTarVel) / L - pi)) - self.LaneWidth / (\
+                    2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
+        self.i = -2
+
         while judge == True:
             for i in range(1, self.carsnumber):
 
@@ -99,10 +116,13 @@ class Highway:
 
     def done2(self, Location, secureDistance):
         judge = False
+        if self.PosY[0] < -1 * self.LaneWidth or self.PosY[0] > 2 * self.LaneWidth:
+            judge = True
         for i in range(0 , np.size(Location, 0)):
             for j in range(i + 1, np.size(Location, 0)):
                 if np.linalg.norm([Location[i] - Location[j]]) <= secureDistance and Location[i, 1] == Location[j, 1]:
                     judge = True
+                    break
         return judge
 
     def sort(self, lane):
@@ -146,23 +166,24 @@ class Highway:
                 if (
                 self.done(np.hstack([self.PosX[i + 1:i + 5:3], self.PosY[i + 1:i + 5:3]]), self.secureDistance * 1.5)):
                     a[i + 4] = -30
-        self.PosX[0] = self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2) + self.PosX[0]
-        self.Vel[0] = self.Vel[0] + a[0] * dt
-        self.Vel[1:] = self.Vel[1:] + a[1:] * dt
-        self.PosX[1:] = self.Vel[1:] * dt + a[1:] * 0.5 * np.power(dt, 2) + self.PosX[1:]
-        dx = self.Vel[0] * dt + a[0] * 0.5 * np.power(dt, 2)
-        self.lateral(action, dx, dt)
+        self.PosX[0] = self.Vel[0] * self.dt + a[0] * 0.5 * np.power(self.dt, 2) + self.PosX[0]
+        self.Vel[0] = self.Vel[0] + a[0] * self.dt
+        self.Vel[1:] = self.Vel[1:] + a[1:] * self.dt
+        self.PosX[1:] = self.Vel[1:] * self.dt + a[1:] * 0.5 * np.power(self.dt, 2) + self.PosX[1:]
+        dx = self.Vel[0] * self.dt + a[0] * 0.5 * np.power(self.dt, 2)
+        self.lateral(action)
         return a[0]
 
-    def lateral(self, turn, xc, Ts):
-        yc=self.PosY[0]
-        L=50
-        pi=3.141592653589793
+    def lateral(self, turn):
+        if  turn != 0 and self.i < 0:
+            self.i =0
+        elif self.i > 249:
+            self.i = -1
+        y=self.PosY[0]
         #turn=1 is turn left turn=2 is turn right
-        if(turn ==1 or turn == 2):
-            yc = yc + np.sign(-(turn - 1.5))*(self.LaneWidth / (2 * pi) * (2 * pi * (xc + Ts * self.Vel[0]) / L + math.sin(2 * pi * (xc + Ts * self.Vel[0]) / L - pi)) - self.LaneWidth / (
-                 2 * pi) * (2 * pi * xc / L + math.sin(2 * pi * xc / L - pi)))
-        self.PosY[0] = yc
+        if self.i >= 0:
+             self.PosY[0] = np.sign(-(turn - 1.5)) * self.yc[self.i] + self.PosY[0]
+             self.i = self.i+1
         self.EgoLaneID = int(1.001 + self.PosY[0]//self.LaneWidth)
         if np.linalg.norm([(self.EgoLaneID-1)*0.5*self.LaneWidth,self.PosY[0]]) < 0.05:
             self.PosY[0] = (self.EgoLaneID-1)*0.5*self.LaneWidth
@@ -230,6 +251,9 @@ class Highway:
                 ob[5] = -200
                 ob[8] = self.Vel[self.EgoLaneID + 5] - self.Vel[0]
                 ob[11] = -10
+        ob2 = np.empty([1, 13])
+        for i in range(13):
+            ob2[0, i - 1] = ob[i - 1]
         return ob
 
     def reward(self, done, action, accel):  # 计算奖励函数
